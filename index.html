@@ -1,8 +1,63 @@
-<script>
-async function loadData() {
-  const res = await fetch("https://thode243.github.io/Kite/data/nifty.json");
-  const data = await res.json();
-  console.log("Nifty data:", data);
-}
-loadData();
-</script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Google Sheets Data on GitHub</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>📊 Live Data from Google Sheets</h2>
+  <canvas id="myChart" width="400" height="200"></canvas>
+  <div id="dataTable"></div>
+
+  <script>
+    // 👉 Replace with your "Published CSV" link from Google Sheets
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ5Lvrxvflj_qRKt-eVIUlr3yltRJQgISwea-qRRDoI5tXMT3TFXiwy0pukbs6wjOfS1K_C9zNxtUra/pub?gid=531615614&single=true&output=csv";
+
+    async function loadData() {
+      const response = await fetch(sheetUrl);
+      const text = await response.text();
+
+      // Parse CSV into rows
+      const rows = text.trim().split("\n").map(r => r.split(","));
+      const headers = rows[0];
+      const dataRows = rows.slice(1);
+
+      // --- Render table ---
+      let html = "<table><tr>";
+      headers.forEach(h => html += `<th>${h}</th>`);
+      html += "</tr>";
+      dataRows.forEach(row => {
+        html += "<tr>" + row.map(cell => `<td>${cell}</td>`).join("") + "</tr>";
+      });
+      html += "</table>";
+      document.getElementById("dataTable").innerHTML = html;
+
+      // --- Simple Chart Example ---
+      const labels = dataRows.map(r => r[0]); // first column as labels
+      const values = dataRows.map(r => parseFloat(r[1]) || 0); // second column as numbers
+
+      new Chart(document.getElementById("myChart"), {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: headers[1],
+            data: values,
+            borderColor: "blue",
+            fill: false
+          }]
+        }
+      });
+    }
+
+    loadData();
+  </script>
+</body>
+</html>
