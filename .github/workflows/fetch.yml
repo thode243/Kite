@@ -1,0 +1,34 @@
+name: Fetch Zerodha Data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"   # run every 5 minutes
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install KiteConnect
+        run: pip install kiteconnect
+
+      - name: Run fetch_data.py
+        env:
+          ZERODHA_API_KEY: ${{ secrets.ZERODHA_API_KEY }}
+          ZERODHA_API_SECRET: ${{ secrets.ZERODHA_API_SECRET }}
+        run: python fetch_data.py
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add data/*.json
+          git commit -m "update data"
+          git push
