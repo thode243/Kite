@@ -1,30 +1,38 @@
-from kiteconnect import KiteConnect
-import json, os, datetime
+# fetch_data.py
+import json, time
+from kiteconnect import KiteTicker
 
 api_key = os.getenv("ZERODHA_API_KEY")
-api_secret = os.getenv("ZERODHA_API_SECRET")
 
-kite = KiteConnect(api_key=api_key)
+# Load saved access_token
+with open("access_token.json") as f:
+    access_token = json.load(f)["access_token"]
 
-# Step 1: You must log in manually to get request_token once per day
-print("Login URL:", kite.login_url())
+kws = KiteTicker(api_key, access_token)
 
-# ⚠️ Manual Step:
-# 1. Open this URL in browser
-# 2. Login with Zerodha
-# 3. Copy request_token from redirected URL
-# 4. Paste below
-request_token = "PASTE_REQUEST_TOKEN_HERE"
+def on_ticks(ws, ticks):
+    """Save ticks into JSON file"""
+    with open("data/nifty.json", "w") as f:
+        json.dump(ticks, f, indent=2)
+    print("Updated nifty.json at", time.strftime("%H:%M:%S"))
 
-data = kite.generate_session(request_token, api_secret=api_secret)
-access_token = data["access_token"]
-kite.set_access_token(access_token)
+def on_connect(ws, response):
+    """Subscribe to instruments"""
+    # Example: NIFTY 50 spot instrument_token
+    ws.subscribe([738561])
+    ws.set_mode(ws.MODE_FULL, [738561])
 
-# Example: Get NIFTY spot quote
-nifty = kite.quote(["NSE:NIFTY 50"])
-filename = "data/nifty.json"
+def on_close(ws, code, reason):
+    print("❌ Connection closed:", code, reason)
 
-with open(filename, "w") as f:
-    json.dump(nifty, f, indent=2)
+# Assign callbacks
+kws.on_ticks = on_ticks
+kws.on_connect = on_connect
+kws.on_close = on_close
 
-print(f"Saved {filename} at {datetime.datetime.now()}")
+# Start streaming
+kws.connect(threaded=True)
+
+# Keep running forever
+while True:
+    time.sleep(1)
