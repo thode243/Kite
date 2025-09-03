@@ -1,6 +1,19 @@
 # fetch_data.py
-import json, time
-from kiteconnect import KiteTicker
+# import json, time
+# from kiteconnect import KiteTicker
+
+import os
+import json
+from kiteconnect import KiteConnect
+
+api_key = os.getenv("ZERODHA_API_KEY")
+api_secret = os.getenv("ZERODHA_API_SECRET")
+
+kite = KiteConnect(api_key=api_key)
+
+# You’ll still need a request_token / access_token flow here,
+# but at least `os` error is fixed now.
+
 
 api_key = os.getenv("ZERODHA_API_KEY")
 
