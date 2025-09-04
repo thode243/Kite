@@ -1,25 +1,25 @@
-
-# get_token.py
+import json
 from kiteconnect import KiteConnect
-import json, os
 
-api_key = os.getenv("ZERODHA_API_KEY")
-api_secret = os.getenv("ZERODHA_API_SECRET")
+# Load credentials
+with open("config.json") as f:
+    creds = json.load(f)
+
+api_key = creds["api_key"]
+api_secret = creds["api_secret"]
 
 kite = KiteConnect(api_key=api_key)
 
-# Step 1: Login URL
 print("Login URL:", kite.login_url())
-print("👉 Open the above URL, login, and copy the request_token from the redirect URL.")
-
-# Step 2: Paste request_token here after login
-request_token = input("Enter request_token: ")
+request_token = input("Enter the request token you got from the URL: ")
 
 data = kite.generate_session(request_token, api_secret=api_secret)
-access_token = data["access_token"]
 
-# Save access_token for later use
+# Save only required fields
 with open("access_token.json", "w") as f:
-    json.dump({"access_token": access_token}, f)
+    json.dump({
+        "access_token": data["access_token"],
+        "user_id": data["user_id"]
+    }, f, indent=2)
 
-print("✅ Saved access_token.json")
+print("✅ Access token saved successfully in access_token.json")
