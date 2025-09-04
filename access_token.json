@@ -1,0 +1,34 @@
+{
+  "user_type": "individual/ind_with_nom",
+  "email": "raju_eee243@yahoo.co.in",
+  "user_name": "Raju Thode",
+  "user_shortname": "Raju",
+  "broker": "ZERODHA",
+  "exchanges": [
+    "NSE",
+    "NFO",
+    "BFO",
+    "BSE",
+    "MF"
+  ],
+  "products": [
+    "CNC",
+    "NRML",
+    "MIS",
+    "BO",
+    "CO"
+  ],
+  "order_types": [
+    "MARKET",
+    "LIMIT",
+    "SL",
+    "SL-M"
+  ],
+  "avatar_url": null,
+  "user_id": "DR4375",
+  "api_key": "xmm56fruhvm26x5t",
+  "access_token": "jBQnY3cUfQ1fkuYIFhy7asbXCgYlT5f5",
+  "public_token": "6VzGrJAGTivkRUV7Ezk5SEFnq0cRZMHg",
+  "refresh_token": "",
+  "enctoken": "EuqLppSkfzAjxO1zDQ99mz2/yOg20mv73jflWW+QZx1mj5bzVDDiq9kUjeVbEyxTM7jVguvTKlGi8BtIgLS5SSYOaIOw9Ivu1BZF3e+Zthoh7IVC8KrKf4HyfB87KTs=",
+  "login_time": 
