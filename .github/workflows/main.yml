@@ -35,8 +35,9 @@ jobs:
 
       - name: Set up Google credentials
         run: |
-          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > "$GOOGLE_CREDENTIALS_PATH"
-          test -s "$GOOGLE_CREDENTIALS_PATH" || { echo "❌ Credentials file is empty"; exit 1; }
+          echo '${{ secrets.GOOGLE_CREDENTIALS }}' > "$GOOGLE_CREDENTIALS_PATH"
+          cat "$GOOGLE_CREDENTIALS_PATH"
+
 
       - name: Run NIFTY Option Chain Updater
         run: |
