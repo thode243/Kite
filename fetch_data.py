@@ -1,65 +1,88 @@
+#!/usr/bin/env python3
+# -----------------------------
+# NIFTY Option Chain Updater (KiteConnect)
+# -----------------------------
+
+import os
+import sys
+import pytz
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from kiteconnect import KiteConnect
-import os
+from datetime import datetime, time, timedelta
 
 # -----------------------------
-# 1. Kite Setup
+# 0. CONFIG
 # -----------------------------
-SHEET_ID = os.getenv("SHEET_ID", "secret")
-CREDENTIALS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "service_account.json")
+SHEET_ID = os.getenv("SHEET_ID")
+GOOGLE_CREDS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "service_account.json")
+API_KEY = os.getenv("API_KEY")
+ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
+EXPIRY = "2025-09-16"  # modify as needed
 
+# -----------------------------
+# 1. Market Open Check (IST)
+# -----------------------------
+ist = pytz.timezone("Asia/Kolkata")
+now = datetime.now(ist)
+current_time = now.time()
+market_open = time(9, 10)
+market_close = time(18, 30)  # extended for testing
+
+if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
+    print("📉 Market is closed, exiting script.")
+    sys.exit(0)
+print(f"✅ Market is open. Time: {current_time}")
 
 # -----------------------------
-# 2. Google Sheets Setup
+# 2. Setup KiteConnect
 # -----------------------------
-SHEET_NAME = "OptionChain"
-JSON_KEYFILE = "credentials.json"
+if not API_KEY or not ACCESS_TOKEN:
+    raise Exception("❌ Missing API_KEY or ACCESS_TOKEN in environment!")
+
+kite = KiteConnect(api_key=API_KEY)
+kite.set_access_token(ACCESS_TOKEN)
+
+# -----------------------------
+# 3. Setup Google Sheets
+# -----------------------------
+if not SHEET_ID or not os.path.exists(GOOGLE_CREDS_PATH):
+    raise Exception("❌ Missing Google Sheet ID or credentials file!")
 
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
-creds = ServiceAccountCredentials.from_json_keyfile_name(JSON_KEYFILE, scope)
+creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDS_PATH, scope)
 client = gspread.authorize(creds)
-sheet = client.open(SHEET_NAME).sheet1
+sheet = client.open_by_key(SHEET_ID).sheet1
 
 # -----------------------------
-# 3. Load Existing OI & VWAP Data
+# 4. Load Existing OI Data
 # -----------------------------
 existing_values = sheet.get_all_values()
 prev_oi_dict = {}
-prev_vwap_dict = {}
 
 if existing_values:
     headers = existing_values[0]
-    if "Strike" in headers:
+    if "Strike" in headers and "Call OI" in headers and "Put OI" in headers:
         strike_col = headers.index("Strike")
         call_oi_col = headers.index("Call OI")
-        call_vwap_col = headers.index("Call VWAP")
         put_oi_col = headers.index("Put OI")
-        put_vwap_col = headers.index("Put VWAP")
-
         for row in existing_values[1:]:
             try:
                 strike = float(row[strike_col])
-                prev_oi_dict[strike] = {
-                    "call": int(row[call_oi_col]) if row[call_oi_col] else 0,
-                    "put": int(row[put_oi_col]) if row[put_oi_col] else 0
-                }
-                prev_vwap_dict[strike] = {
-                    "call": float(row[call_vwap_col]) if row[call_vwap_col] else 0,
-                    "put": float(row[put_vwap_col]) if row[put_vwap_col] else 0
-                }
+                call_oi = int(row[call_oi_col]) if row[call_oi_col] else 0
+                put_oi = int(row[put_oi_col]) if row[put_oi_col] else 0
+                prev_oi_dict[strike] = {"call": call_oi, "put": put_oi}
             except:
                 continue
 
 # -----------------------------
-# 4. Fetch Option Chain Data
+# 5. Fetch Option Chain Data
 # -----------------------------
-expiry = "2025-09-16"
 instruments = kite.instruments("NFO")
+nifty_options = [i for i in instruments if i["name"] == "NIFTY" and i["expiry"].strftime("%Y-%m-%d") == EXPIRY]
 
-nifty_options = [i for i in instruments if i["name"] == "NIFTY" and i["expiry"].strftime("%Y-%m-%d") == expiry]
-print(f"✅ Found {len(nifty_options)} NIFTY contracts for {expiry}")
+print(f"✅ Found {len(nifty_options)} NIFTY contracts for {EXPIRY}")
 
 option_chain = {}
 for inst in nifty_options:
@@ -70,39 +93,32 @@ for inst in nifty_options:
         vol = quote[str(inst["instrument_token"])].get("volume", 0)
 
         strike = inst["strike"]
-        typ = inst["instrument_type"]  # CE or PE
+        typ = inst["instrument_type"]
 
         if strike not in option_chain:
             option_chain[strike] = {"call": {}, "put": {}}
 
         if typ == "CE":
             prev_oi = prev_oi_dict.get(strike, {}).get("call", 0)
-            prev_vwap = prev_vwap_dict.get(strike, {}).get("call", 0)
-            # Calculate cumulative VWAP
-            vwap = ((prev_vwap * prev_oi) + (ltp * vol)) / max(prev_oi + vol, 1)
             option_chain[strike]["call"] = {
                 "ltp": ltp,
                 "oi": oi,
                 "chg_oi": oi - prev_oi,
-                "vol": vol,
-                "vwap": round(vwap, 2)
+                "vol": vol
             }
         elif typ == "PE":
             prev_oi = prev_oi_dict.get(strike, {}).get("put", 0)
-            prev_vwap = prev_vwap_dict.get(strike, {}).get("put", 0)
-            vwap = ((prev_vwap * prev_oi) + (ltp * vol)) / max(prev_oi + vol, 1)
             option_chain[strike]["put"] = {
                 "ltp": ltp,
                 "oi": oi,
                 "chg_oi": oi - prev_oi,
-                "vol": vol,
-                "vwap": round(vwap, 2)
+                "vol": vol
             }
     except Exception as e:
         print(f"⚠️ Error fetching {inst['tradingsymbol']}: {e}")
 
 # -----------------------------
-# 5. Prepare Rows
+# 6. Prepare Rows
 # -----------------------------
 rows = []
 for strike, data in sorted(option_chain.items()):
@@ -114,27 +130,26 @@ for strike, data in sorted(option_chain.items()):
         call.get("chg_oi", 0),
         call.get("vol", 0),
         strike,
-        expiry,
+        EXPIRY,
         put.get("ltp", 0),
         put.get("oi", 0),
         put.get("chg_oi", 0),
         put.get("vol", 0),
-        call.get("vwap", ""),  # VWAP for CE
-        put.get("vwap", "")    # VWAP for PE
+        ""  # VWAP placeholder
     ])
 
 # -----------------------------
-# 6. Write to Google Sheet
+# 7. Write to Google Sheet
 # -----------------------------
 headers_row = [
     "Call LTP", "Call OI", "Call Chg OI", "Call Vol",
     "Strike", "Expiry",
     "Put LTP", "Put OI", "Put Chg OI", "Put Vol",
-    "Call VWAP", "Put VWAP"
+    "VWAP"
 ]
 
 sheet.clear()
 sheet.insert_row(headers_row, 1)
 sheet.insert_rows(rows, 2)
 
-print(f"✅ Logged {len(rows)} rows with Call/Put split format and VWAP")
+print(f"✅ Logged {len(rows)} rows with Call/Put split format")
