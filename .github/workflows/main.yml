@@ -1,5 +1,5 @@
-name: Update NIFTY Sheet (Market Hours)
-#
+name: Update NIFTY Sheet
+
 on:
   push:
     branches:
@@ -10,14 +10,17 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-nifty:
+  update:
     runs-on: ubuntu-latest
-    concurrency:
-      group: nifty-update
-      cancel-in-progress: true
-
+    env:
+      # ✅ Pass secrets to environment
+      API_KEY: ${{ secrets.API_KEY }}
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      API_SECRET: ${{ secrets.API_SECRET }}
+      SHEET_ID: ${{ secrets.SHEET_ID }}
+      GOOGLE_CREDENTIALS_PATH: ${{ github.workspace }}/service_account.json
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -32,42 +35,22 @@ jobs:
 
       - name: Set up Google credentials
         run: |
-          echo "${GOOGLE_CREDENTIALS}" > "$GITHUB_WORKSPACE/service_account.json"
-          test -s "$GITHUB_WORKSPACE/service_account.json" || { echo "❌ Credentials file is empty"; exit 1; }
-        env:
-          GOOGLE_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}
+          echo "${{ secrets.GOOGLE_CREDENTIALS }}" > "$GOOGLE_CREDENTIALS_PATH"
+          test -s "$GOOGLE_CREDENTIALS_PATH" || { echo "❌ Credentials file is empty"; exit 1; }
 
-      - name: Set up Kite credentials
-        run: |
-          echo "${ACCESS_TOKEN}" > "$GITHUB_WORKSPACE/access_token.txt"
-          test -s "$GITHUB_WORKSPACE/access_token.txt" || { echo "❌ Kite access token is empty"; exit 1; }
-        env:
-          ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
-
-      - name: Run NIFTY update script with market check
-        env:
-          SHEET_ID: ${{ secrets.SHEET_ID }}
-          POLLING_INTERVAL: 60
-          GOOGLE_CREDENTIALS_PATH: ${{ github.workspace }}/service_account.json
-          KITE_API_KEY: ${{ secrets.API_KEY }}
-          KITE_ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      - name: Run NIFTY Option Chain Updater
         run: |
           echo "⏰ Checking if market is open..."
           python - <<'EOF'
-          import datetime, pytz, sys
+          import pytz, datetime, sys
           ist = pytz.timezone("Asia/Kolkata")
-          now = datetime.datetime.now(ist).time()
-          market_open = datetime.time(9, 10)
-          market_close = datetime.time(23, 30)
-          if not (market_open <= now <= market_close):
-              print("📉 Market is closed, exiting workflow.")
+          now = datetime.datetime.now(ist)
+          current_time = now.time()
+          market_open = datetime.time(9,10)
+          market_close = datetime.time(23,30)
+          if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
+              print("📉 Market is closed, exiting script.")
               sys.exit(0)
+          print(f"✅ Market is open. Time: {current_time}")
           EOF
           python fetch_data.py
-
-      - name: Upload logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: nifty-update-logs
-          path: option_chain_updater2.log
