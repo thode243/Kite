@@ -2,7 +2,7 @@
 # -----------------------------
 # NIFTY Option Chain Updater (KiteConnect)
 # -----------------------------
-#
+
 import os
 import sys
 import pytz
