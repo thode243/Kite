@@ -27,7 +27,7 @@ ist = pytz.timezone("Asia/Kolkata")
 now = datetime.now(ist)
 current_time = now.time()
 market_open = time(9, 10)
-market_close = time(23, 30)  # extended for testing
+market_close = time(17, 30)  # extended for testing
 
 if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
     print("📉 Market is closed, exiting script.")
