@@ -1,5 +1,5 @@
 name: Update NIFTY Sheet
-
+#
 on:
   push:
     branches:
@@ -13,12 +13,12 @@ jobs:
   update:
     runs-on: ubuntu-latest
     env:
+      # ✅ Pass secrets to environment
       API_KEY: ${{ secrets.API_KEY }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       API_SECRET: ${{ secrets.API_SECRET }}
       SHEET_ID: ${{ secrets.SHEET_ID }}
       GOOGLE_CREDENTIALS_PATH: ${{ github.workspace }}/service_account.json
-
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -36,25 +36,21 @@ jobs:
       - name: Set up Google credentials
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS }}' > "$GOOGLE_CREDENTIALS_PATH"
+          cat "$GOOGLE_CREDENTIALS_PATH"
 
-      - name: Run NIFTY Option Chain Updater (every 30s for 1 minute)
+      - name: Run NIFTY Option Chain Updater
         run: |
-          for i in {1..2}; do
-            echo "⏰ Checking if market is open... (Run $i)"
-            python - <<'EOF'
-import pytz, datetime, sys
-ist = pytz.timezone("Asia/Kolkata")
-now = datetime.datetime.now(ist)
-current_time = now.time()
-market_open = datetime.time(9,10)
-market_close = datetime.time(15,30)  # ✅ Fixed
-if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
-    print("📉 Market is closed, exiting script.")
-    sys.exit(0)
-print(f"✅ Market is open. Time: {current_time}")
-EOF
-            python fetch_data.py
-            if [ $i -eq 1 ]; then
-              sleep 30
-            fi
-          done
+          echo "⏰ Checking if market is open..."
+          python - <<'EOF'
+          import pytz, datetime, sys
+          ist = pytz.timezone("Asia/Kolkata")
+          now = datetime.datetime.now(ist)
+          current_time = now.time()
+          market_open = datetime.time(9,10)
+          market_close = datetime.time(23,30)
+          if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
+              print("📉 Market is closed, exiting script.")
+              sys.exit(0)
+          print(f"✅ Market is open. Time: {current_time}")
+          EOF
+          python fetch_data.py
