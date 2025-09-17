@@ -13,12 +13,12 @@ jobs:
   update:
     runs-on: ubuntu-latest
     env:
-      # ✅ Pass secrets to environment
       API_KEY: ${{ secrets.API_KEY }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       API_SECRET: ${{ secrets.API_SECRET }}
       SHEET_ID: ${{ secrets.SHEET_ID }}
       GOOGLE_CREDENTIALS_PATH: ${{ github.workspace }}/service_account.json
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -36,18 +36,11 @@ jobs:
       - name: Set up Google credentials
         run: |
           echo '${{ secrets.GOOGLE_CREDENTIALS }}' > "$GOOGLE_CREDENTIALS_PATH"
-          cat "$GOOGLE_CREDENTIALS_PATH"
 
-      - name: Run NIFTY Option Chain Updater
+      - name: Run NIFTY Option Chain Updater (twice per minute)
         run: |
-          for i in {1..2}; do
-          echo "⏰ Run $i"
+          echo "⏰ First run"
           python fetch_data.py
-          if [ $i -eq 1 ]; then
           sleep 30
-          fi
-          done
-        
-        
-        
-
+          echo "⏰ Second run"
+          python fetch_data.py
