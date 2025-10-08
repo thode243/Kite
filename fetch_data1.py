@@ -34,12 +34,14 @@ ist = pytz.timezone("Asia/Kolkata")
 now = datetime.now(ist)
 current_time = now.time()
 market_open = time(9, 10)
-market_close = time(18, 30)
+market_close = time(23, 59)
 
-if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
-    print("📉 Market is closed, exiting script.")
-    sys.exit(0)
-print(f"✅ Market is open. Time: {current_time}")
+print(f"🧪 Test mode active: Market open check bypassed. Time: {current_time}")
+
+# if not (market_open <= current_time <= market_close) or now.weekday() >= 5:
+#    print("📉 Market is closed, exiting script.")
+#   sys.exit(0)
+# print(f"✅ Market is open. Time: {current_time}")
 
 # -----------------------------
 # 2. Setup KiteConnect
