@@ -20,27 +20,14 @@ API_KEY = os.getenv("API_KEY")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 # Define expiries you want to track
-# EXPIRIES = [
-    # ("2025-10-14", "Expiry1"),
-    # ("2025-10-20", "Expiry2"),
-    #("2025-10-28", "Expiry3"),
-    #("2025-11-04", "Expiry4"),
-#]
-
-INSTRUMENTS = [
-    ("NIFTY", [
-        ("2025-10-14", "Expiry1"),
-        ("2025-10-20", "Expiry2"),
-        ("2025-10-28", "Expiry3"),
-        ("2025-11-04", "Expiry4"),
-    ]),
-    ("BANKNIFTY", [
-        ("2025-10-28", "Expiry5"),   # next expiry (Thursday)
-    ]),
-    ("SENSEX", [
-        ("2025-10-09", "Expiry6"),   # next Wednesday expiry (weekly)
-    ])
+EXPIRIES = [
+    ("2025-10-14", "Expiry1"),
+    ("2025-10-20", "Expiry2"),
+    ("2025-10-28", "Expiry3"),
+    ("2025-11-04", "Expiry4"),
 ]
+
+
 
 # -----------------------------
 # 1. Market Open Check (IST)
