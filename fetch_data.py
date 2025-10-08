@@ -21,10 +21,10 @@ ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 # Define expiries you want to track
 EXPIRIES = [
-    ("2025-10-07", "Expiry1"),
-    ("2025-10-14", "Expiry2"),
-    ("2025-10-20", "Expiry3"),
-    ("2025-10-28", "Expiry4"),
+    ("2025-10-14", "Expiry1"),
+    ("2025-10-20", "Expiry2"),
+    ("2025-10-28", "Expiry3"),
+    ("2025-11-04", "Expiry4"),
 ]
 
 # -----------------------------
