@@ -28,4 +28,4 @@ jobs:
           GOOGLE_CREDENTIALS_PATH: "service_account.json"
         run: |
           echo "${{ secrets.GOOGLE_CREDENTIALS_JSON }}" > service_account.json
-          python fetch_sensex.py
+          python fetch_data1.py
