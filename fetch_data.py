@@ -22,7 +22,7 @@ ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
 # Define SENSEX expiry sheets
 EXPIRIES = [
-    ("2025-10-09", "SENSEX_Exp_1"),  # (expiry_date, sheet_tab_name)
+    ("2025-10-16", "SENSEX_Exp_1"),  # (expiry_date, sheet_tab_name)
 ]
 
 # -----------------------------
