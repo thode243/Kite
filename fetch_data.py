@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 # -----------------------------
-# SENSEX Option Chain Updater (KiteConnect + Google Sheets)
+# NIFTY Option Chain Updater (KiteConnect)
 # -----------------------------
-
 import os
 import sys
 import pytz
@@ -10,8 +9,8 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from kiteconnect import KiteConnect
 from datetime import datetime, time
-from gspread.exceptions import WorksheetNotFound
-#
+
+
 # -----------------------------
 # 0. CONFIG
 # -----------------------------
@@ -20,10 +19,15 @@ GOOGLE_CREDS_PATH = os.getenv("GOOGLE_CREDENTIALS_PATH", "service_account.json")
 API_KEY = os.getenv("API_KEY")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 
-# Define SENSEX expiry sheets
+# Define expiries you want to track
 EXPIRIES = [
-    ("2025-10-23", "SENSEX_Exp_1"),  # (expiry_date, sheet_tab_name)
+    ("2025-10-28", "Expiry1"),
+    ("2025-11-04", "Expiry2"),
+    ("2025-11-11", "Expiry3"),
+    ("2025-11-18", "Expiry4"),
 ]
+
+
 
 # -----------------------------
 # 1. Market Open Check (IST)
@@ -58,7 +62,6 @@ scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name(GOOGLE_CREDS_PATH, scope)
 client = gspread.authorize(creds)
-spreadsheet = client.open_by_key(SHEET_ID)
 
 # -----------------------------
 # 4. Process each Expiry
@@ -67,12 +70,11 @@ for expiry, sheet_name in EXPIRIES:
     print(f"\n📌 Processing expiry {expiry} → Sheet {sheet_name}")
 
     try:
-        # Get or create worksheet
+        # Get target sheet
         try:
-            sheet = spreadsheet.worksheet(sheet_name)
-        except WorksheetNotFound:
-            sheet = spreadsheet.add_worksheet(title=sheet_name, rows=1000, cols=20)
-            print(f"🆕 Created new worksheet: {sheet_name}")
+            sheet = client.open_by_key(SHEET_ID).worksheet(sheet_name)
+        except gspread.exceptions.WorksheetNotFound:
+            sheet = client.open_by_key(SHEET_ID).add_worksheet(title=sheet_name, rows=1000, cols=20)
 
         # Load existing data for OI change
         existing_values = sheet.get_all_values()
@@ -92,28 +94,22 @@ for expiry, sheet_name in EXPIRIES:
                     except:
                         continue
 
-        # -----------------------------
-        # 5. Fetch SENSEX Option Chain
-        # -----------------------------
-        instruments = kite.instruments("BFO")  # SENSEX options are in BFO segment
-        sensex_options = [
-            i for i in instruments
-            if i["name"] == "SENSEX" and i["expiry"].strftime("%Y-%m-%d") == expiry
-        ]
+        # Fetch option chain instruments for this expiry
+        instruments = kite.instruments("NFO")
+        nifty_options = [i for i in instruments if i["name"] == "NIFTY" and i["expiry"].strftime("%Y-%m-%d") == expiry]
+        print(f"✅ Found {len(nifty_options)} NIFTY contracts for {expiry}")
 
-        print(f"✅ Found {len(sensex_options)} SENSEX option contracts for {expiry}")
-
+        # Build option chain
         option_chain = {}
-        for inst in sensex_options:
+        for inst in nifty_options:
             try:
                 quote = kite.quote(inst["instrument_token"])
-                data = quote[str(inst["instrument_token"])]
-                ltp = data.get("last_price", 0)
-                oi = data.get("oi", 0)
-                vol = data.get("volume", 0)
+                ltp = quote[str(inst["instrument_token"])]["last_price"]
+                oi = quote[str(inst["instrument_token"])].get("oi", 0)
+                vol = quote[str(inst["instrument_token"])].get("volume", 0)
 
                 strike = inst["strike"]
-                typ = inst["instrument_type"]  # CE or PE
+                typ = inst["instrument_type"]
 
                 if strike not in option_chain:
                     option_chain[strike] = {"call": {}, "put": {}}
@@ -134,20 +130,10 @@ for expiry, sheet_name in EXPIRIES:
                         "chg_oi": oi - prev_oi,
                         "vol": vol
                     }
-
             except Exception as e:
                 print(f"⚠️ Error fetching {inst['tradingsymbol']}: {e}")
 
-        # -----------------------------
-        # 6. Write to Google Sheet
-        # -----------------------------
-        headers_row = [
-            "Call LTP", "Call OI", "Call Chg OI", "Call Vol",
-            "Strike", "Expiry",
-            "Put LTP", "Put OI", "Put Chg OI", "Put Vol",
-            "VWAP"
-        ]
-
+        # Prepare rows
         rows = []
         for strike, data in sorted(option_chain.items()):
             call = data.get("call", {})
@@ -165,6 +151,14 @@ for expiry, sheet_name in EXPIRIES:
                 put.get("vol", 0),
                 ""  # VWAP placeholder
             ])
+
+        # Write to sheet
+        headers_row = [
+            "Call LTP", "Call OI", "Call Chg OI", "Call Vol",
+            "Strike", "Expiry",
+            "Put LTP", "Put OI", "Put Chg OI", "Put Vol",
+            "VWAP"
+        ]
 
         sheet.clear()
         sheet.insert_row(headers_row, 1)
